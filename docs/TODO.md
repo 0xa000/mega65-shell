@@ -11,9 +11,8 @@ m65-shell-poc copy; this list carries only what is still open.
 - [x] R6 v5 static built (WNS +0.173) WITH the v4 SD/FAT32 loader wired
       (external micro-SD slot — user decision 2026-07-19); catalog
       (democore seed + menu + Moon Patrol R6 ports) relinked + verified.
-- [ ] Hardware shakedown, Wukong: LED verdict readings on good/bad
-      streams, loader at 50 MHz (UART M65D raw+chain regression,
-      menu-driven SD swap).
+- [x] Hardware shakedown, Wukong: v5 catalog works end to end
+      (user-verified 2026-07-20).
 - [ ] Hardware shakedown, R6 (tester): swap regression + first SD/menu
       test on the external slot; keyboard via mega65kbd path in the menu.
 
