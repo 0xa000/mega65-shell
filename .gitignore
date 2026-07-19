@@ -1,0 +1,11 @@
+build/
+*.jou
+*.log
+*.backup.*
+.Xil/
+__pycache__/
+*.pyc
+work-obj*.cf
+releases/**/*.dcp
+releases/**/*.bit
+releases/**/*.bin
