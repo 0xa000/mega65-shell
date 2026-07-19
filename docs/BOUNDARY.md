@@ -65,7 +65,9 @@ a long-press reset: **solid** = config engine never saw the sync word,
 - **Core clocks** — two DRP-programmable MMCMs behind `clkctl`/`clkstat`
   and the toggle-handshake DRP proxy; generic outputs `core_clk0`
   (fractional-capable) / `core_clk1` / `core_clk2`: `boards/BOUNDARY-V2.md`
-  + v3 annex. RM clocking rule: an RM must program its own presets at wake.
+  + v3 annex. RM clocking rule: an RM must program its own presets at wake;
+  wake tables and per-RM child clock overrides are generated from one table
+  by `tools/mmcm_drp_table.py` (never hand-edit the rows).
 - **Video preset** — `vclk_sel_o` request, 64-cycle stability filter,
   `hdmi_rst` as the only feedback: `boards/BOUNDARY-V1.md`.
 - **Memory** — one burst-capable 16-bit Avalon-MM slave; waitrequest is

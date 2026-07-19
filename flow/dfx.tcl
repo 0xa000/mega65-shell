@@ -147,8 +147,11 @@ if { $stage == "child" } {
    open_checkpoint $outdir/static_locked.dcp
    read_checkpoint -cell RM $opt(RM_DCP)
    read_xdc $xdc_child
+   # RM_XDC accepts a space-separated list: the RM framework XDC plus the
+   # per-RM clock override emitted by tools/mmcm_drp_table.py --xdc
+   # (read after the common child XDC, per the one-table rule).
    if { [info exists opt(RM_XDC)] } {
-      read_xdc -unmanaged $opt(RM_XDC)
+      foreach x $opt(RM_XDC) { read_xdc -unmanaged $x }
    }
    apply_ascal_false_path
 

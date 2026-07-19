@@ -18,7 +18,7 @@ RUN      = $(VIVADO) -mode batch -nojournal -log $(BUILD)/vivado_$@.log \
 
 $(shell mkdir -p $(BUILD))
 
-.PHONY: elab synth link child verify static sim clean
+.PHONY: elab synth link child verify static drp-selftest sim clean
 
 elab:
 	$(RUN) static_elab
@@ -37,6 +37,10 @@ child:
 
 verify:
 	$(RUN) verify $(EXTRA_CONFIGS)
+
+# XAPP888 DRP row-table generator: check against the hardware-verified vectors
+drp-selftest:
+	python3 tools/mmcm_drp_table.py --selftest
 
 # GHDL testbench for the SD/FAT32 load path (card model enforces NCS timing)
 sim:
