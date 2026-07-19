@@ -21,6 +21,10 @@
 --   * the sync-word-gated UART -> ICAP loader (verified in m65-shell-poc
 --     stage A1), which drives decouple/rm_reset; it runs on loader_clk
 --     (50 MHz) and latches the ICAP O-port status per attempt (round 5)
+--   * the FAT32 SD load path (boundary v4, ported from the Wukong shell):
+--     descriptor register file over the reserved boundary pins, walker
+--     owns the EXTERNAL micro-SD slot during a load (internal slot is
+--     RM-only), "M65D" UART frames with TX status echo as the host path
 --   * decoupling: every RM output is gated/muxed to a safe value while the
 --     RP is dark; the Avalon fence completes an in-flight write burst with
 --     shell-injected dummy beats (never wait for the decoupled side)
@@ -529,6 +533,66 @@ architecture synthesis of shell_top_r6 is
    signal loader_status      : std_logic_vector(1 downto 0);
    signal loader_progress    : unsigned(19 downto 0);
 
+   -- Loader byte source after the load_ctrl mux (UART or SD walker).
+   signal ld_byte            : std_logic_vector(7 downto 0);
+   signal ld_valid           : std_logic;
+
+   -- FAT32 walker: two descriptor sources (UART frame via load_ctrl,
+   -- RM via desc_proxy), one command interface.
+   signal wk_req             : std_logic;
+   signal wk_mode            : std_logic;
+   signal wk_part            : std_logic_vector(3 downto 0);
+   signal wk_start           : std_logic_vector(31 downto 0);
+   signal wk_len             : std_logic_vector(31 downto 0);
+   signal wk_busy            : std_logic;
+   signal wk_done            : std_logic;
+   signal wk_err             : std_logic;
+   signal wk_diag            : std_logic_vector(7 downto 0);
+   signal wk_diag_r1         : std_logic_vector(7 downto 0);
+   signal wk_byte            : std_logic_vector(7 downto 0);
+   signal wk_valid           : std_logic;
+
+   signal lc_req             : std_logic;   -- from load_ctrl (UART)
+   signal lc_mode            : std_logic;
+   signal lc_part            : std_logic_vector(3 downto 0);
+   signal lc_start           : std_logic_vector(31 downto 0);
+   signal lc_len             : std_logic_vector(31 downto 0);
+
+   signal dp_req             : std_logic;   -- from desc_proxy (RM)
+   signal dp_mode            : std_logic;
+   signal dp_part            : std_logic_vector(3 downto 0);
+   signal dp_start           : std_logic_vector(31 downto 0);
+   signal dp_len             : std_logic_vector(31 downto 0);
+
+   -- SD sector engine (walker side).
+   signal sdc_init           : std_logic;
+   signal sdc_rd             : std_logic;
+   signal sdc_lba            : std_logic_vector(31 downto 0);
+   signal sdc_done           : std_logic;
+   signal sdc_err            : std_logic;
+   signal sdc_diag           : std_logic_vector(7 downto 0);
+   signal sdc_diag_r1        : std_logic_vector(7 downto 0);
+   signal sdc_byte           : std_logic_vector(7 downto 0);
+   signal sdc_valid          : std_logic;
+
+   -- Walker-owned SD pins (muxed onto the external micro-SD pads while a
+   -- load runs).
+   signal wk_sd_cs_n         : std_logic;
+   signal wk_sd_clk          : std_logic;
+   signal wk_sd_mosi         : std_logic;
+
+   -- Status echo (load_ctrl -> uart_tx, muxed onto the TX pad).
+   signal echo_data          : std_logic_vector(7 downto 0);
+   signal echo_send          : std_logic;
+   signal echo_busy          : std_logic;
+   signal echo_txd           : std_logic;
+
+   signal loader_idle        : std_logic;
+
+   -- Descriptor proxy <-> RM reserved pins.
+   signal rm_rsv_o           : std_logic_vector(15 downto 0);
+   signal rsv_to_rm          : std_logic_vector(15 downto 0);
+
    -- ICAP config-engine evidence latches (loader domain) and the verdict
    -- blink they drive on the red LED after a load attempt
    signal icap_attempt       : std_logic;
@@ -1007,8 +1071,8 @@ begin
       port map (
          clk          => loader_clk,
          rst          => loader_rst,
-         byte_in      => loader_byte,
-         byte_valid   => loader_byte_valid,
+         byte_in      => ld_byte,
+         byte_valid   => ld_valid,
          decouple     => decouple,
          rm_reset     => rm_reset,
          status       => loader_status,
@@ -1024,7 +1088,7 @@ begin
       if rising_edge(loader_clk) then
          if decouple = '0' then
             loader_progress <= (others => '0');
-         elsif loader_byte_valid = '1' then
+         elsif ld_valid = '1' then
             loader_progress <= loader_progress + 1;
          end if;
       end if;
@@ -1046,6 +1110,138 @@ begin
    led_verdict <= '1'             when icap_dalign = '0' else
                   verdict_cnt(25) when icap_cfgerr = '1' or icap_abort = '1' else
                   verdict_cnt(22);
+
+   ---------------------------------------------------------------------------
+   -- SD -> ICAP load path (FAT32 core loader, boundary v4; whole path in
+   -- the loader domain — same structure as the Wukong shell). The walker
+   -- owns the EXTERNAL micro-SD slot (sd_*); the internal slot (sd2_*)
+   -- stays fully RM-owned.
+   ---------------------------------------------------------------------------
+
+   loader_idle <= '1' when loader_status = "00" else '0';
+
+   -- load_ctrl: UART pass-through + 14-byte "M65D" descriptor frames +
+   -- byte-source mux into the ICAP loader + status echo (host test path;
+   -- the menu RM uses the desc_proxy instead).
+   i_load_ctrl : entity work.load_ctrl
+      port map (
+         clk         => loader_clk,
+         rst         => loader_rst,
+         uart_byte   => loader_byte,
+         uart_valid  => loader_byte_valid,
+         loader_idle => loader_idle,
+         ld_byte     => ld_byte,
+         ld_valid    => ld_valid,
+         wk_req      => lc_req,
+         wk_mode     => lc_mode,
+         wk_part     => lc_part,
+         wk_start    => lc_start,
+         wk_len      => lc_len,
+         wk_busy     => wk_busy,
+         wk_done     => wk_done,
+         wk_err      => wk_err,
+         wk_diag     => wk_diag,
+         wk_diag_r1  => wk_diag_r1,
+         wk_byte     => wk_byte,
+         wk_valid    => wk_valid,
+         tx_data     => echo_data,
+         tx_send     => echo_send,
+         tx_busy     => echo_busy
+      ); -- i_load_ctrl
+
+   -- desc_proxy: the RM-facing descriptor register file over the reserved
+   -- boundary pins (menu firmware writes partition/cluster/length + GO).
+   i_desc_proxy : entity work.desc_proxy
+      port map (
+         clk         => loader_clk,
+         rst         => loader_rst,
+         decouple    => decouple,
+         rsv_from_rm => rm_rsv_o,
+         rsv_to_rm   => rsv_to_rm,
+         wk_req      => dp_req,
+         wk_mode     => dp_mode,
+         wk_part     => dp_part,
+         wk_start    => dp_start,
+         wk_len      => dp_len,
+         wk_busy     => wk_busy,
+         wk_err      => wk_err,
+         wk_diag     => wk_diag
+      ); -- i_desc_proxy
+
+   -- Two descriptor sources, one walker: the proxy wins a same-cycle tie
+   -- (never happens in practice); the walker ignores requests while busy.
+   wk_req   <= lc_req or dp_req;
+   wk_mode  <= dp_mode  when dp_req = '1' else lc_mode;
+   wk_part  <= dp_part  when dp_req = '1' else lc_part;
+   wk_start <= dp_start when dp_req = '1' else lc_start;
+   wk_len   <= dp_len   when dp_req = '1' else lc_len;
+
+   i_fat32_walker : entity work.fat32_walker
+      port map (
+         clk         => loader_clk,
+         rst         => loader_rst,
+         req         => wk_req,
+         mode_chain  => wk_mode,
+         part_sel    => wk_part,
+         start       => wk_start,
+         byte_len    => wk_len,
+         byte_out    => wk_byte,
+         byte_valid  => wk_valid,
+         busy        => wk_busy,
+         done        => wk_done,
+         err         => wk_err,
+         diag_code   => wk_diag,
+         diag_r1     => wk_diag_r1,
+         sdc_init    => sdc_init,
+         sdc_rd      => sdc_rd,
+         sdc_lba     => sdc_lba,
+         sdc_done    => sdc_done,
+         sdc_err     => sdc_err,
+         sdc_diag    => sdc_diag,
+         sdc_diag_r1 => sdc_diag_r1,
+         sdc_byte    => sdc_byte,
+         sdc_valid   => sdc_valid
+      ); -- i_fat32_walker
+
+   i_sd_sector : entity work.sd_sector
+      generic map (
+         CLK_HZ => 50_000_000
+      )
+      port map (
+         clk        => loader_clk,
+         rst        => loader_rst,
+         init_req   => sdc_init,
+         rd_req     => sdc_rd,
+         lba        => sdc_lba,
+         byte_out   => sdc_byte,
+         byte_valid => sdc_valid,
+         ready      => open,
+         done       => sdc_done,
+         err        => sdc_err,
+         diag_state => sdc_diag,
+         diag_r1    => sdc_diag_r1,
+         sd_cs_n    => wk_sd_cs_n,
+         sd_clk     => wk_sd_clk,
+         sd_mosi    => wk_sd_mosi,
+         sd_miso    => sd_miso_i
+      ); -- i_sd_sector
+
+   -- Status echo transmitter (2 MBd like the loader RX). Echo bytes take
+   -- priority over the RM's TX for their ~5 us — at worst a corrupted
+   -- console character, in exchange for host-visible load diagnostics.
+   i_uart_tx : entity work.uart_tx
+      generic map (
+         CLK_HZ => 50_000_000,
+         BAUD   => 2_000_000
+      )
+      port map (
+         clk  => loader_clk,
+         rst  => loader_rst,
+         data => echo_data,
+         send => echo_send,
+         txd  => echo_txd,
+         busy => echo_busy
+      ); -- i_uart_tx
 
    -- Loader-domain outputs crossed back into the sys domain for the
    -- consumers that live there (vclk/clkctl freeze, drp_proxy, RM resets).
@@ -1282,15 +1478,19 @@ begin
          power_led_o         => rm_power_led,
          drive_led_o         => rm_drive_led,
          rm_alive_o          => rm_alive,
-         rsv_i               => (others => '0'),
-         rsv_o               => open
+         rsv_i               => rsv_to_rm,
+         rsv_o               => rm_rsv_o
       ); -- RM
 
    ---------------------------------------------------------------------------
    -- Tier-0 outputs with decoupling
    ---------------------------------------------------------------------------
 
-   uart_txd_o <= rm_uart_tx when decouple = '0' else '1';
+   -- TX pad: status-echo bytes win over the RM console for their duration
+   -- (~5 us each); idle high while the RP is dark and no echo runs.
+   uart_txd_o <= echo_txd   when echo_busy = '1' else
+                 rm_uart_tx when decouple = '0'  else
+                 '1';
 
    -- Smart keyboard: park the serial protocol lines low while the RP is dark
    kb_io0_o <= rm_kb_io0 when decouple = '0' else '0';
@@ -1302,10 +1502,17 @@ begin
    kb_tdi_o    <= '0';
    kb_jtagen_o <= '0';
 
-   -- SD slots: deselect while dark (reset asserted, clock low, mosi idle)
-   sd_reset_o  <= rm_sd_reset  when decouple = '0' else '1';
-   sd_clk_o    <= rm_sd_clk    when decouple = '0' else '0';
-   sd_mosi_o   <= rm_sd_mosi   when decouple = '0' else '1';
+   -- External micro-SD pads, three-way: the walker owns them for the whole
+   -- of a load (from GO, i.e. before decouple — the requesting RM must keep
+   -- off this slot after firing a descriptor); otherwise the RM when
+   -- coupled; deselected when the RP is dark.
+   sd_reset_o  <= wk_sd_cs_n  when wk_busy = '1'  else
+                  rm_sd_reset when decouple = '0' else '1';
+   sd_clk_o    <= wk_sd_clk   when wk_busy = '1'  else
+                  rm_sd_clk   when decouple = '0' else '0';
+   sd_mosi_o   <= wk_sd_mosi  when wk_busy = '1'  else
+                  rm_sd_mosi  when decouple = '0' else '1';
+   -- Internal slot: fully RM-owned; deselect while dark
    sd2_reset_o <= rm_sd2_reset when decouple = '0' else '1';
    sd2_clk_o   <= rm_sd2_clk   when decouple = '0' else '0';
    sd2_mosi_o  <= rm_sd2_mosi  when decouple = '0' else '1';

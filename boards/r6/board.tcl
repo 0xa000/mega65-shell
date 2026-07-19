@@ -5,9 +5,6 @@
 set part      xc7a200tfbg484-2
 set shell_top shell_top_r6
 
-# Note: the UART/SD FAT32 load path (uart_tx, sd_sector, fat32_walker,
-# load_ctrl, desc_proxy) is not yet wired on the R6 shell top; only the
-# blocks it instantiates are listed here.
 set static_vhdl_2008 {
    rtl/common/types_pkg.vhd
    rtl/common/shell_clk_base.vhd
@@ -20,6 +17,11 @@ set static_vhdl_2008 {
    rtl/common/serialiser_10to1_selectio.vhd
    rtl/common/icap_loader.vhdl
    rtl/common/uart_rx.vhdl
+   rtl/common/uart_tx.vhdl
+   rtl/common/sd_sector.vhdl
+   rtl/common/fat32_walker.vhdl
+   rtl/common/load_ctrl.vhdl
+   rtl/common/desc_proxy.vhd
    boards/r6/rtl/audio.vhd
    boards/r6/hyperram/hyperram_errata.vhd
    boards/r6/hyperram/hyperram_config.vhd
