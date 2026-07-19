@@ -5,26 +5,17 @@ m65-shell-poc copy; this list carries only what is still open.
 
 ## v5 bring-up (this repo)
 
-- [ ] Wukong v5 static: `make BOARD=wukong synth link` with the M2M fork's
-      democore as seed RM (needs the fork's rm_top renamed to the v5 port
-      names first — see "RM-side" below), then relink the catalog
-      (democore + menu + Moon Patrol) and `make verify`.
-- [ ] Hardware shakedown of the two v5 backports on Wukong: LED verdict
-      readings on good/bad streams, loader at 50 MHz (UART M65D raw+chain
-      regression, menu-driven SD swap).
-- [ ] R6 static from this repo (round-5 parity first, then the v4 loader
-      port below).
-
-## R6 feature parity (v4 loader port)
-
-- [ ] Wire the SD/FAT32 load path (uart_tx, sd_sector, fat32_walker,
-      load_ctrl, desc_proxy) into shell_top_r6 — blocks already in
-      rtl/common and listed as unwired in boards/r6/board.tcl.
-- [ ] DECIDE: which SD slot the walker owns on the R6 (external micro-SD
-      at the back vs internal full-size under the cover), and the park/mux
-      policy for the other slot.
-- [ ] Menu RM port to the R6 (picorv32-menu; needs the descriptor block +
-      rsv serializer against the R6 boundary).
+- [x] Wukong v5 static built (WNS +0.392) + catalog relinked
+      (democore seed + menu + Moon Patrol), pr_verify-interchangeable
+      (2026-07-19).
+- [x] R6 v5 static built (WNS +0.173) WITH the v4 SD/FAT32 loader wired
+      (external micro-SD slot — user decision 2026-07-19); catalog
+      (democore seed + menu + Moon Patrol R6 ports) relinked + verified.
+- [ ] Hardware shakedown, Wukong: LED verdict readings on good/bad
+      streams, loader at 50 MHz (UART M65D raw+chain regression,
+      menu-driven SD swap).
+- [ ] Hardware shakedown, R6 (tester): swap regression + first SD/menu
+      test on the external slot; keyboard via mega65kbd path in the menu.
 
 ## R6 open issues (from tester rounds)
 
@@ -43,12 +34,11 @@ m65-shell-poc copy; this list carries only what is still open.
 
 ## RM-side (framework/core repos, no static rebuild)
 
-- [ ] M2M fork: rename rm_top/rm_top_r6 ports to the v5 names
-      (docs/BOUNDARY.md rename map) and create the R6 framework XDC
-      (sdcard_clk + EAE multicycles, read -unmanaged at link — the
-      constraints were dropped from this repo's r6 static/child XDCs per
-      the ownership rule).
-- [ ] drp_done gate into VIC20 + C64 rm_tops (democore + R6 have it).
+- [x] M2M fork rm_top/rm_top_r6 v5 renames (branches dfx-v5 / dfx-v5-r6)
+      + R6 qnice-rm.xdc; picorv32-menu + Moon Patrol renamed and ported
+      to R6 (2026-07-19).
+- [ ] VIC20 + C64 rm_tops: v5 rename + relink (deferred; also still
+      missing the drp_done gate that democore/R6/Moon Patrol have).
 - [ ] VIC20 rebased-RM fit: `synth_design -max_bram` reclaim of 1 tile.
 - [ ] Cosmetic: RM blanks video while clkstat[2]=0 (short-press stall
       window visibly frozen otherwise).
