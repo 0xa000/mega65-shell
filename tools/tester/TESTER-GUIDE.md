@@ -1,5 +1,52 @@
 # MEGA65 R6 core-swap prototype — tester guide
 
+> **Update 2026-07-20 (round 6): the menu is here.** This is a complete
+> new build (the shell moved to its own repository and the boundary
+> changed) — **old partials and .bit files are dead, use only files from
+> this zip together.** The big new feature: cores are now switched from
+> an on-screen menu reading the SD card, no PC in the loop.
+>
+> **Setup:**
+>
+> 1. Format a micro-SD card FAT32 and copy the three
+>    `config_*_pblock_RM_partial.bin` files onto it. Put it in the
+>    **external micro-SD slot at the back of the case** (the internal
+>    slot under the trapdoor is not used by the loader).
+> 2. Push `config_menu.bit` with Vivado's Hardware Manager or
+>    openFPGALoader (still not the m65 tool — see the round-5 note
+>    below). The menu — a text screen on a black background —
+>    should appear over HDMI.
+>
+> **Test 1 — menu + keyboard:** does the menu picture appear, and do the
+> cursor keys and RETURN move the selection? (This is the first build
+> where the MEGA65's own keyboard drives the menu — key handling is a
+> test subject in itself. Please also try HELP/RESTORE and report
+> anything odd.)
+>
+> **Test 2 — SD core switch:** select a `.BIN` file and press RETURN.
+> The screen blanks briefly, the red LED flickers with load progress,
+> and the selected core should appear — democore is a colored
+> checkerboard, Moon Patrol is the arcade game. Please report the red
+> LED pattern after every switch (verdict reference in the round-5 note
+> below; "fast blink" is the good one). Switch back and forth as often
+> as you like — loading `config_menu_pblock_RM_partial.bin` from the
+> menu... requires the menu, so to get back from a core either push
+> `config_menu.bit` again over JTAG, or (if you have the serial cable
+> set up) `python3 send_partial.py config_menu_pblock_RM_partial.bin
+> --port <the second TE0790 port>`.
+>
+> **Test 3 — be mean:** reset presses (short and long) in and around
+> loads, RETURN on the wrong files, pulling the SD card mid-load,
+> power-cycling. The shell should always either complete the swap or
+> stay in a recoverable state (a long reset press + JTAG push is the
+> worst-case recovery). Known issue to re-observe: the "black screen on
+> first full push until one short reset" cold-boot race.
+>
+> Moon Patrol plays with its arcade ROMs on the same card (`arcade/
+> mpatrol/` folder, as for the MEGA65 release build); without them it
+> stops at the ROM-missing screen — that is itself a successful swap.
+
+
 > **Update 2026-07-17 (round 5):** the round-4 clocking fix was real but
 > evidently not the whole story, so this build makes the board itself
 > tell us what the FPGA's internal configuration port did. **Complete new
