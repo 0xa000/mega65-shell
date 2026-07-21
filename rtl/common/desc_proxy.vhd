@@ -83,6 +83,11 @@ architecture rtl of desc_proxy is
   signal err_latch : std_logic := '0';
   signal diag_r    : std_logic_vector(7 downto 0) := (others => '0');
 
+  -- Registered so the RM-bound crossing starts at a clean FF (the busy OR
+  -- would otherwise sit combinationally in the loader->sys_clk path; one
+  -- loader cycle of extra latency is buried in the serializer busy window).
+  signal busy_r    : std_logic := '0';
+
 begin
 
   wk_mode  <= mode_part(4);
@@ -90,7 +95,7 @@ begin
   wk_start <= start_r;
   wk_len   <= len_r;
 
-  rsv_to_rm <= ack & "00000" & (wk_busy or ip_busy) & err_latch & diag_r;
+  rsv_to_rm <= ack & "00000" & busy_r & err_latch & diag_r;
 
   process(clk)
     variable idx : natural range 0 to 15;
@@ -98,6 +103,7 @@ begin
     if rising_edge(clk) then
       wk_req <= '0';
       ip_req <= '0';
+      busy_r <= wk_busy or ip_busy;
 
       if rst = '1' or decouple = '1' then
         -- Zero the WHOLE handshake so toggle parity re-pairs with the
