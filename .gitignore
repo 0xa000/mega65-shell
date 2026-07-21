@@ -9,3 +9,10 @@ work-obj*.cf
 releases/**/*.dcp
 releases/**/*.bit
 releases/**/*.bin
+releases/*.zip
+
+# binary bundles ship as GitHub release assets, not in git
+tools/tester/dist/
+
+# local project notes, not part of the public repo
+CLAUDE.md

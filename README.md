@@ -26,7 +26,7 @@ simulation testbenches (`sim/`) and the boundary documentation (`docs/`).
 rtl/common/       board-agnostic shell blocks (loader stack, clock service, fences)
 boards/<board>/   shell_top, constraints, pblock, memory controller
 flow/             Vivado non-project DFX flow (parameterized per board)
-tools/            partial senders, FAT32 helpers, tester packaging
+tools/            partial senders, FAT32 helpers, tester + SDK release packaging
 sim/              GHDL testbenches
 docs/             design rationale, boundary service contract, per-board annexes
 releases/         released static ABIs (static_locked.dcp + boundary spec), not in git
@@ -44,6 +44,20 @@ existing partials — that is inherent to DFX.
 Building the static requires a *seed RM* netlist for the first
 configuration; the flow takes it as an input artifact (`SEED_RM_DCP`), so
 no core code lives in this repository.
+
+## Getting the SDK / building a core
+
+Core developers consume the shell as a **tagged GitHub release** (the
+locked static, the `pr_verify` reference and install images) and never
+rebuild it. Start here:
+
+- `docs/SDK-RELEASE.md` — what to download, the **exact-Vivado-version
+  requirement** (currently 2023.2; the free ML Standard edition suffices),
+  and the hardware tiers (TE0790 vs SD-card-only development).
+- `docs/RM-CONVERSION-GUIDE.md` — the step-by-step manual for turning an
+  existing core into a loadable partial.
+- `docs/BOUNDARY.md` — the boundary service contract (ABI) and its
+  version lineage.
 
 ## Licensing
 

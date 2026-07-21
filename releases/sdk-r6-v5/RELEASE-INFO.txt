@@ -1,0 +1,11 @@
+mega65-shell SDK release
+board:            r6
+part:             xc7a200tfbg484-2
+boundary version: v5
+Vivado version:   2023.2  (exact-version requirement - see docs/SDK-RELEASE.md)
+packaged:         2026-07-21
+
+The ABI identity is the pair (sha256 of static_locked.dcp, Vivado version).
+Every RM in a catalog must be built with this Vivado version and linked
+against this exact static_locked.dcp; partials are only interchangeable
+within one release.
