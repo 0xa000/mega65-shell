@@ -58,6 +58,20 @@ should move RM-side.
       in Vivado; both rectangles clock-region aligned, so
       RESET_AFTER_RECONFIG holds). Weigh against the SDRAM
       controller's own placement needs in row Y4 before committing.
+- [ ] Boundary-exerciser seed RM (replaces the democore as SEED_RM_DCP
+      at the re-lock): a small self-contained design in THIS repo that
+      loads every boundary service at once — Avalon burst traffic, the
+      DRP wake sequence with all three core clocks consumed at
+      aggressive frequencies, TMDS pattern generator, PCM audio, the
+      QSPI group — and, crucially, real registered logic on a core
+      clock driving/sampling the tier-0 triples that every current seed
+      only ties off (cartridge port, IEC, keyboard, joysticks), so
+      those partition pins are placed with actual timing arcs pulling
+      them toward their I/O banks instead of with zero pull (a C64 RM
+      meets tight combinational pad round-trips exactly there). Also
+      makes the seed independent of the M2M fork (SDK self-hosting);
+      config_a then boots a visible test pattern. Menu stays the
+      golden/default RM and install image — the roles are orthogonal.
 - [ ] Ethernet park polish: hold the PHY in reset while unsupported
       (today `eth_reset_o <= '1'` with no RMII clock, verbatim from
       upstream).
