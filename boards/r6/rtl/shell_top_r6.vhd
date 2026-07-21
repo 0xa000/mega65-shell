@@ -778,7 +778,7 @@ architecture synthesis of shell_top_r6 is
    -- Same 64-cycle filter as vclk_sel; freeze while RP is dark.
    -- Bit mapping: [5]=core_clk2 mux (v3),
    --              [0]=core_clk0 mux, [1]=core_clk1 mux, [2]=cascade_en,
-   --              [3]=CORE_A rst, [4]=CORE_B rst, [5:7]=reserved
+   --              [3]=CORE_A rst, [4]=CORE_B rst, [6:7]=reserved
    ---------------------------------------------------------------------------
 
    constant C_CLKCTL_DEFAULT : std_logic_vector(7 downto 0) := (others => '0');

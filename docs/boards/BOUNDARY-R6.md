@@ -3,6 +3,12 @@
 > `qnice_clk/qnice_rst` -> `loader_clk/loader_rst`, `hr_clk/hr_rst` ->
 > `mem_clk/mem_rst`, `reset_m2m_n` -> `reset_shell_n`. Semantics are
 > unchanged; see ../BOUNDARY.md for the current contract.
+>
+> **Erratum (2026-07-21).** QSPI is listed below as parked static / not
+> in the ABI — that was the 2026-07-11 decision and was superseded by
+> the boundary v3 QSPI pass-through (BOUNDARY-V3.md), which the R6
+> shell implements: qspi data/CS go through the boundary, the flash
+> clock is proxied via the shell-owned STARTUPE2.
 
 # Boundary R6 — MEGA65 R6 static shell (DRAFT)
 

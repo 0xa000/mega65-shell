@@ -31,6 +31,42 @@ m65-shell-poc copy; this list carries only what is still open.
 - [ ] Golden descriptor 0 from QSPI + rm_alive watchdog: shell falls back
       to the menu core if the loaded RM never comes alive.
 
+## Boundary v6 wishlist (next static rebuild — bundle, don't trickle)
+
+From the R6 tidy-up review (2026-07-21). None of these justifies an ABI
+break on its own; execute as one bundle when the next rebuild is forced.
+Review conclusions that need NO action: the shell-side audio DAC driver
+stays (park-at-silence keeps the AK4432 clocked across swaps; boundary
+carries clean PCM; ~40 FFs), and nothing else currently in the shell
+should move RM-side.
+
+- [ ] SDRAM service: controller in the shell behind a second Avalon
+      slave (`mem2_*`), per the standing decision in
+      boards/BOUNDARY-R6.md (raw pins rejected — IOB-timing risk on
+      every RM rebuild). Controller candidates listed there.
+- [ ] Rename the `rsv` boundary pins to their actual function —
+      descriptor hand-over to the desc_proxy register file (e.g.
+      `rsv_i/rsv_o` -> `desc_i/desc_o`) — and add a fresh
+      over-provisioned spare bus (`rsv2`) in both directions: the
+      current 16+16 bits are fully consumed, so today any new service,
+      however small, forces an ABI break.
+- [ ] Raw pass-throughs for the remaining parked peripherals: Ethernet
+      PHY (RMII), internal FDC, PMOD (+ enables/flags). Park gates
+      only, negligible static cost; sweep them in wholesale.
+- [ ] Consider an L-shaped RP: add clock region X1Y4 to the RM
+      (~9-10k LUTs, ~20 RAMB36, ~40 DSPs — exact numbers to be queried
+      in Vivado; both rectangles clock-region aligned, so
+      RESET_AFTER_RECONFIG holds). Weigh against the SDRAM
+      controller's own placement needs in row Y4 before committing.
+- [ ] Ethernet park polish: hold the PHY in reset while unsupported
+      (today `eth_reset_o <= '1'` with no RMII clock, verbatim from
+      upstream).
+- [ ] Optional: expose joystick_5v_disable/powergood as boundary bits.
+- [ ] Optional (pairs with loader phase 4): minimal shell-side keyboard
+      LED driver so load progress/verdict is visible on a closed case
+      (mainboard LEDs are inside the case; keyboard LEDs are RM-driven
+      and unreachable while the RP is dark).
+
 ## RM-side (framework/core repos, no static rebuild)
 
 - [x] M2M fork rm_top/rm_top_r6 v5 renames (branches dfx-v5 / dfx-v5-r6)
