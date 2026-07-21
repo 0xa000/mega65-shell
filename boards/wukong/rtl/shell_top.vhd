@@ -249,6 +249,15 @@ architecture synthesis of shell_top is
    signal ld_byte            : std_logic_vector(7 downto 0);
    signal ld_valid           : std_logic;
 
+   -- IPROG warm-boot sequencer (desc_proxy mode 2): its byte stream takes
+   -- priority over the load_ctrl mux at the icap_loader input.
+   signal ip_req             : std_logic;
+   signal ip_busy            : std_logic;
+   signal ip_byte            : std_logic_vector(7 downto 0);
+   signal ip_valid           : std_logic;
+   signal icap_byte          : std_logic_vector(7 downto 0);
+   signal icap_bvalid        : std_logic;
+
    -- FAT32 walker: two descriptor sources (UART frame via load_ctrl,
    -- RM via desc_proxy), one command interface.
    signal wk_req             : std_logic;
@@ -650,6 +659,12 @@ begin
          data_valid => loader_byte_valid
       ); -- i_uart_rx
 
+   -- Byte-source priority mux: the IPROG sequence pre-empts UART/SD bytes
+   -- (nothing legitimate streams while the sequencer runs — GO is gated on
+   -- walker-idle, and the fabric is about to be replaced anyway).
+   icap_byte   <= ip_byte when ip_busy = '1' else ld_byte;
+   icap_bvalid <= ip_valid or (ld_valid and not ip_busy);
+
    i_icap_loader : entity work.icap_loader
       generic map (
          CLK_HZ => 50_000_000
@@ -657,8 +672,8 @@ begin
       port map (
          clk          => loader_clk,
          rst          => loader_rst,
-         byte_in      => ld_byte,
-         byte_valid   => ld_valid,
+         byte_in      => icap_byte,
+         byte_valid   => icap_bvalid,
          decouple     => decouple,
          rm_reset     => rm_reset,
          status       => loader_status,
@@ -749,8 +764,24 @@ begin
          wk_len      => dp_len,
          wk_busy     => wk_busy,
          wk_err      => wk_err,
-         wk_diag     => wk_diag
+         wk_diag     => wk_diag,
+         ip_req      => ip_req,
+         ip_busy     => ip_busy
       ); -- i_desc_proxy
+
+   -- IPROG warm-boot sequencer (desc_proxy mode 2): plays the canned
+   -- WBSTAR/IPROG command stream into the loader; the config engine then
+   -- reloads the full bitstream from flash at dp_start.
+   i_iprog_seq : entity work.iprog_seq
+      port map (
+         clk        => loader_clk,
+         rst        => loader_rst,
+         req        => ip_req,
+         addr       => dp_start,
+         busy       => ip_busy,
+         byte_out   => ip_byte,
+         byte_valid => ip_valid
+      ); -- i_iprog_seq
 
    -- Two descriptor sources, one walker: the proxy wins a same-cycle tie
    -- (never happens in practice); the walker ignores requests while busy.

@@ -22,6 +22,7 @@ set static_vhdl_2008 {
    rtl/common/fat32_walker.vhdl
    rtl/common/load_ctrl.vhdl
    rtl/common/desc_proxy.vhd
+   rtl/common/iprog_seq.vhdl
    boards/r6/rtl/audio.vhd
    boards/r6/hyperram/hyperram_errata.vhd
    boards/r6/hyperram/hyperram_config.vhd
