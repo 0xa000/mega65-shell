@@ -24,6 +24,7 @@ set static_vhdl_2008 {
    rtl/common/fat32_walker.vhdl
    rtl/common/load_ctrl.vhdl
    rtl/common/desc_proxy.vhd
+   rtl/common/iprog_seq.vhdl
    boards/wukong/rtl/clk_wukong.vhd
    boards/wukong/rtl/avm_to_wb.vhd
    boards/wukong/rtl/ddr3_wrapper_wukong.vhd

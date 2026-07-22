@@ -34,6 +34,12 @@ cp "$SHELL_BUILD/config_a_pblock_RM_partial.bin"        "$OUT/config_democore_pb
 cp "$MENU_BUILD/config_picorv32_r6_pblock_RM_partial.bin" "$OUT/config_menu_pblock_RM_partial.bin"
 cp "$MPATROL_BUILD/config_mpatrol_r6_pblock_RM_partial.bin" "$OUT/config_mpatrol_pblock_RM_partial.bin"
 
+# menu as a flashable .cor (optional flash-write test; model id 6 = R6)
+MENU_REPO=${MENU_REPO:-../../../picorv32-menu}
+python3 "$MENU_REPO/scripts/mk_cor.py" --name "MEGA65 DFX MENU" \
+   --version "$(git -C "$MENU_REPO" describe --always --dirty)" --model-id 6 \
+   "$MENU_BUILD/config_picorv32_r6.bin" "$OUT/menu_r6.cor"
+
 cp ../send_partial.py TESTER-GUIDE.md "$OUT/"
 
 (cd "$OUT" && sha256sum -- * > sha256sums.txt)

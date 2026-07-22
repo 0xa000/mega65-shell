@@ -49,3 +49,11 @@ set_false_path -from [get_clocks loader_clk] -to [get_clocks hdmi_clk]
 set_clock_groups -asynchronous -quiet \
    -group [get_clocks -quiet loader_clk] \
    -group [get_clocks -quiet {core_clk0 core_clk0_b core_clk1 core_clk1_b core_clk2 core_clk2_b}]
+
+## desc_proxy CDC: the RM->shell descriptor transport is a toggle handshake
+## over the reserved boundary pins — payload is held stable before the toggle
+## flips, and the toggle itself is 2-FF synced inside desc_proxy. Bound the
+## datapath like the other CDCs (hold analysis off): child links otherwise
+## fail hold on RM-serializer -> payload-register paths (seen at the first
+## menu relink against the iprog_seq static, WHS -0.745).
+set_max_delay 8 -datapath_only -from [get_clocks sys_clk_100] -to [get_cells i_desc_proxy/*]

@@ -1,10 +1,75 @@
 # MEGA65 R6 core-swap prototype — tester guide
 
-> **Update 2026-07-20 (round 6): the menu is here.** This is a complete
-> new build (the shell moved to its own repository and the boundary
-> changed) — **old partials and .bit files are dead, use only files from
-> this zip together.** The big new feature: cores are now switched from
-> an on-screen menu reading the SD card, no PC in the loop.
+> **Update 2026-07-21 (round 8, flash slots).** This **replaces the
+> round-7 zip**, and it is again a complete new build generation — **old
+> partials and .bit files are dead, use only files from this zip
+> together.** Two big changes:
+>
+> **1. The menu now reads your QSPI flash.** At the top of the menu,
+> above the SD file list, it shows all **8 flash slots** (8 MB each on
+> the R6's 64 MB chip) with the core names from their headers —
+> including the cores already installed on your machine. This is the
+> first outing of a new controller for the R6's flash chip (S25FL512S),
+> so even the passive part is a test: please check the slot list against
+> what the stock MEGA65 core selector shows on your machine, and report
+> any slot that reads wrong or shows `(read error)`.
+>
+> **2. Booting a flash slot from the menu.** Move the selection to a
+> populated slot and press **RETURN**: the FPGA reboots into that core
+> straight from flash (your stock MEGA65 core in slot 0 included). This
+> is a full reconfiguration — to get back to the test menu, JTAG-push
+> `config_menu.bit` again (a power cycle returns the machine to its
+> normal boot behaviour, as always).
+>
+> **About flash writing — read before using `E` or flashing a `.cor`.**
+> Unlike previous rounds, the menu now *can* write flash, but **only via
+> two explicit actions**: `E` on a slot (erase) and RETURN on a `.cor`
+> file from SD (flash into a slot you pick). Nothing writes flash on its
+> own; browsing and booting are read-only. **Slot 0 (the factory core) is
+> locked in firmware** — the menu refuses to erase or flash it. If you
+> want to test writing, `menu_r6.cor` is included: copy it to the SD
+> card, flash it into a slot you are happy to sacrifice (one you'd also
+> let the stock flasher overwrite), and afterwards that slot should
+> appear as `MEGA65 DFX MENU` in both this menu *and* — after a power
+> cycle — the stock core selector (hold the slot's number key at power-on
+> to boot it; expect the same menu over HDMI). Erasing/reflashing that
+> slot with the stock flasher afterwards restores the status quo. If you
+> would rather not write your flash at all, skip this test — everything
+> else works read-only, and the `E`/flash actions are the only writers.
+>
+> The usual regression pass also applies (this is a new static): menu
+> picture + keyboard, SD partial swaps to democore / Moon Patrol and
+> back. `sha256sums.txt` has the hashes.
+
+> **Update 2026-07-20 (round 7, HDMI framing fix).** This **replaces the
+> round-6 zip.** Root cause of the "no signal / out-of-spec" menu on some
+> of your monitors: the menu core was emitting a bare **DVI** stream (no
+> HDMI guard bands or InfoFrame), while democore/Moon Patrol emit full
+> **HDMI**. It is standard-conformant, so tolerant monitors showed it fine
+> (one of yours read it as a perfect 1280x720 60Hz), but pickier monitors
+> refuse to lock a DVI-only stream — which is why democore displayed on a
+> screen where the menu could not. The menu now goes through the **same
+> HDMI encoder as the other cores**, so any monitor that shows democore
+> should show the menu. **Please re-try specifically the monitor(s) that
+> previously gave "no signal" or a garbled resolution on the menu.**
+> New `config_menu.bit` hash starts `789f6638…` (verify against
+> `sha256sums.txt`). Everything else below still applies.
+>
+> **Update 2026-07-20 (round 6, corrected menu build).** This **replaces
+> the first 2026-07-20 zip**, whose menu core came up as a *blank screen
+> with no menu*. That was not a shell or video fault — democore pushed
+> fine on your board, which proved the shell and the whole HDMI path are
+> healthy. The menu's CPU had simply been built around a **stale baked
+> firmware image** (five days old) that never drew anything. This build
+> bakes the current firmware. **Please verify `config_menu.bit` against
+> `sha256sums.txt` before loading** so you know you have the corrected one
+> (its hash starts `9499892a…`).
+>
+> This is otherwise a complete new build (the shell moved to its own
+> repository and the boundary changed) — **old partials and .bit files
+> are dead, use only files from this zip together.** The headline feature:
+> cores are switched from an on-screen menu reading the SD card, no PC in
+> the loop.
 >
 > **Setup:**
 >
@@ -14,8 +79,18 @@
 >    slot under the trapdoor is not used by the loader).
 > 2. Push `config_menu.bit` with Vivado's Hardware Manager or
 >    openFPGALoader (still not the m65 tool — see the round-5 note
->    below). The menu — a text screen on a black background —
->    should appear over HDMI.
+>    below). The menu should appear over HDMI on a **blue border**.
+>
+> **The blue border is also a deliberate liveness marker.** The video
+> pipeline draws it in hardware, independently of the menu firmware, so it
+> tells us where a failure is if one happens:
+>
+> * **blue border + menu text** — all good, proceed;
+> * **blue border but no text** — video is alive; the menu firmware isn't
+>    drawing (a firmware problem — please tell us, with a photo);
+> * **no signal at all / the monitor sleeps** — the core isn't coming up
+>    (a different problem from last round — please report it, and try one
+>    short reset press to see if it recovers).
 >
 > **Test 1 — menu + keyboard:** does the menu picture appear, and do the
 > cursor keys and RETURN move the selection? (This is the first build
@@ -158,29 +233,36 @@ swap is unmistakable. The interesting part is the swap itself.
 
 ## Is this safe for my MEGA65?
 
-Yes. Everything here is loaded over JTAG into FPGA configuration RAM
-only — **nothing is written to the QSPI flash, the SD cards are not
-touched, and a power cycle returns your MEGA65 exactly to its installed
-cores.** Please do *not* flash these bitstreams into a QSPI core slot;
-they are JTAG-only by design.
+Yes, with one round-8 caveat. The bitstreams are loaded over JTAG into
+FPGA configuration RAM only, the SD cards are never written, and a power
+cycle returns your MEGA65 to its installed cores. **New in round 8: the
+menu can write QSPI flash, but only when you explicitly ask it to** —
+the `E` (erase slot) action and flashing a `.cor` file into a slot you
+select. Browsing the slot list and booting slots are read-only. Slot 0
+(the factory core) is locked in firmware and cannot be erased or
+flashed from the menu. If you skip the optional flash-write test, your
+flash is never modified.
 
 If anything ever looks stuck: power-cycle. That is always a full
-recovery.
+recovery (flash writes excepted — those change the slot you chose, same
+as the stock flasher would).
 
 ## Package contents
 
 | File | What it is |
 |---|---|
-| `config_a.bit` | full bitstream: shell + demo core (JTAG) |
-| `config_b.bit` | full bitstream: shell + inverted demo core (JTAG) |
-| `config_a_pblock_RM_partial.bin` | partial: demo core only (serial swap) |
-| `config_b_pblock_RM_partial.bin` | partial: inverted demo core only (serial swap) |
+| `config_menu.bit` | full bitstream: shell + menu core, firmware baked in (JTAG entry image) |
+| `config_democore.bit` | full bitstream: shell + demo core (JTAG fallback) |
+| `config_menu_pblock_RM_partial.bin` | partial: menu core only (SD / serial swap) |
+| `config_democore_pblock_RM_partial.bin` | partial: demo core only (SD / serial swap) |
+| `config_mpatrol_pblock_RM_partial.bin` | partial: Moon Patrol core only (SD / serial swap) |
+| `menu_r6.cor` | the menu as a flashable core (optional flash-write test, slots 1-7) |
 | `send_partial.py` | serial upload script for the partials |
 | `sha256sums.txt` | checksums |
 
-All four bitstreams come from **one build** and belong together. Don't
-mix them with files from another release — a partial from build N loaded
-into the shell of build M produces a black screen (harmless, but a wasted
+All bitstreams come from **one build** and belong together. Don't mix
+them with files from another release — a partial from build N loaded into
+the shell of build M produces a black screen (harmless, but a wasted
 test; JTAG-load a full bitstream to recover).
 
 ## Test 1 — shell bring-up (JTAG only)
