@@ -22,11 +22,11 @@ From the release matching your board and boundary version (e.g. `r6-v5`):
 | `config_menu_pblock_RM_partial.bin`, `config_democore_pblock_RM_partial.bin` | Known-good partials — sanity-check your load path with these before debugging your own RM |
 | `sha256sums.txt`, `RELEASE-INFO.txt` | Checksums + the release's part/boundary/Vivado identity |
 
-You'll also want the sibling repos: this one (flow, tools, docs), the
-MiSTer2MEGA65 fork branch `dfx-v5-r6` (the RM framework you vendor:
-`rm_top_r6.vhd`, the `*_rm` twins, `clk_drp_master`, `qnice-rm.xdc`), and
-the worked examples — `picorv32-menu` (non-M2M) and the Moon Patrol fork
-(M2M, `CORE/r6-dfx-build.tcl`).
+For an M2M-based core, the RM framework (`rm_top_r6.vhd`, the `*_rm`
+twins, `clk_drp_master`, `qnice-rm.xdc`) is a drop-in: `sdk/m2m-r6/` in
+this repo, installed with `sdk/install-overlay.sh` (see `sdk/README.md`).
+Worked examples beyond the shipped democore: `picorv32-menu` (non-M2M)
+and the Moon Patrol fork (M2M, `CORE/r6-dfx-build.tcl`).
 
 ### Vivado: exact version required
 

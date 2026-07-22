@@ -35,8 +35,9 @@ releases/         released static ABIs (static_locked.dcp + boundary spec), not 
 ## The SDK model
 
 Each board has, at any time, **one released locked static implementation**
-(`static_locked.dcp`) — that checkpoint *is* the ABI. Core projects vendor
-their RM-side framework but **link against the released static**, never
+(`static_locked.dcp`) — that checkpoint *is* the ABI. Core projects take
+the RM-side framework as a drop-in overlay (`sdk/`, `install-overlay.sh`)
+but **link against the released static**, never
 rebuild it. Rebuilding the static (any change to `rtl/common`, a board's
 shell or constraints) starts a new boundary version and invalidates all
 existing partials — that is inherent to DFX.

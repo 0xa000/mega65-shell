@@ -149,7 +149,7 @@ output** (24-bit RGB + syncs + VDAC control), and a **PCM audio pair**
 (`audio_left_o`/`audio_right_o`, signed 16-bit @ `audio_clk_i`) into the
 shell's AK4432 DAC driver. `mem_*` talks to the HyperRAM (whose content
 survives swaps) instead of DDR3. Start from an existing R6 RM
-(`rm_top_r6.vhd` in the M2M fork branch `dfx-v5-r6` or picorv32-menu) —
+(`rm_top_r6.vhd` from the `sdk/m2m-r6/` overlay or picorv32-menu) —
 the democore ties the whole C64-specific block off, so even a minimal RM
 satisfies the ABI without new code.
 
@@ -396,8 +396,9 @@ package is a 42-bit-per-row table — `[41:39]` target, `[38:32]` DRP address,
 `mycore_clk_row(idx)`. (See `mpatrol_clk_pkg.vhd` for a real generated file.)
 
 **2) Instantiate the DRP master and point it at the ROM.** `clk_drp_master`
-is the RM-side helper, vendored with the RM framework in the core repos
-(M2M fork `M2M/vhdl/dfx/clk_drp_master.vhd`, branches `dfx-v5`/`dfx-v5-r6`).
+is the RM-side helper, shipped with the RM framework in the `sdk/`
+overlays (installed as `M2M/vhdl/dfx/clk_drp_master.vhd` and the Wukong
+equivalent).
 It runs on `sys_clk_i` (fixed, so it can't be pulled out from under itself),
 asserts the target MMCM's reset via `clkctl`, streams the rows through the
 toggle handshake, then waits for the lock bit — the XAPP888 sequence:
@@ -622,8 +623,9 @@ the first 3-clock RM, and the first to exist for both boards.
 M2M's flat top-level files each have a DFX twin that is the same file with
 only the shell-owned pieces carved out. You use the twin in the RM file list
 and drop the flat one. They are deliberately kept as reviewable diffs against
-their originals, on the M2M fork branches `dfx-v5` (Wukong) / `dfx-v5-r6`
-(R6):
+their originals, developed on the M2M fork branches `dfx-v5` (Wukong) /
+`dfx-v5-r6` (R6) and distributed as drop-in overlays in `sdk/`
+(`install-overlay.sh` — see `sdk/README.md`):
 
 | flat file | RM twin | what was carved out |
 |---|---|---|
@@ -694,7 +696,7 @@ make BOARD=wukong child RM_DCP=build/rm_mpatrol_synth.dcp NAME=mpatrol \
    to every RM: generic `cdc_stable` max-delays, the ascal clock-domain
    waivers (all `-quiet`, inert if your RM has no ascal), and the
    loader↔core / fixed-clock-pair async groups.
-2. Your **RM-framework XDC** (e.g. the M2M fork's `qnice-rm.xdc`) — the
+2. Your **RM-framework XDC** (e.g. the overlay's `qnice-rm.xdc`) — the
    framework's *internal* constraints: the QNICE sdcard 25 MHz divider
    clock, EAE multicycles. Passed via `RM_XDC`.
 3. Your **generated per-core clock override**
