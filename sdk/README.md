@@ -13,7 +13,7 @@ flat (non-DFX) build of the core works.
 
 | Overlay | Applies on top of | Patches |
 |---|---|---|
-| `m2m-wukong/` | the M2M fork's `wukong` branch (board port; already carries the ascal + `avm_increase` fixes) | none |
+| `m2m-wukong/` | the M2M fork's `master` (board port; already carries the ascal + `avm_increase` fixes) | none |
 | `m2m-r6/` | **stock upstream** [MiSTer2MEGA65](https://github.com/sy2002/MiSTer2MEGA65) | `ascal-avl-reset-clear.patch` |
 
 Exact pinned base revisions: each overlay's `OVERLAY-INFO.md`.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install a mega65-shell RM overlay into a MiSTer2MEGA65-based core checkout.
 #
-#   ./install-overlay.sh wukong /path/to/core-checkout   # base: M2M fork, branch `wukong`
+#   ./install-overlay.sh wukong /path/to/core-checkout   # base: M2M fork master
 #   ./install-overlay.sh r6     /path/to/core-checkout   # base: upstream MiSTer2MEGA65
 #
 # Copies the overlay's files/ tree into the checkout (pure additions) and

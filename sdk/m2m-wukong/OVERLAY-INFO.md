@@ -6,13 +6,13 @@ RM-side DFX framework for M2M-based cores on the **QMTECH Wukong** board.
 
 | | |
 |---|---|
-| Applies on top of | `0xa000/MiSTer2MEGA65-wukong`, branch **`wukong`** @ `c3b0b41` |
+| Applies on top of | `0xa000/MiSTer2MEGA65-wukong`, **`master`** @ `c3b0b41` |
 | Extracted from | branch `dfx-v5` @ `60e6ed1` |
 | Boundary | v5 (`docs/BOUNDARY.md`); static: SDK release `wukong-v5` |
-| Patches | none — the `wukong` branch already carries the ascal reset fix and both `avm_increase` fixes |
+| Patches | none — the fork's `master` already carries the ascal reset fix and both `avm_increase` fixes |
 
 The Wukong board support itself (pins, UberDDR3, keyboard, flat build) is
-the `wukong` branch's job; this overlay only adds the RM framework on top.
+the fork `master`'s job; this overlay only adds the RM framework on top.
 
 ## Files
 
